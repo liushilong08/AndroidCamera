@@ -9,6 +9,7 @@ import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
 import android.os.Build;
+import android.util.Log;
 
 import com.aserbao.androidcustomcamera.blocks.mediaCodec.bigflake.encodeDecode.InputSurface;
 import com.aserbao.androidcustomcamera.whole.createVideoByVoice.localEdit.VideoInfo;
@@ -25,12 +26,11 @@ import java.util.concurrent.Executors;
 
 import static android.media.MediaExtractor.SEEK_TO_PREVIOUS_SYNC;
 
-/**
- * Created by Administrator on 2017/6/19 0019.
- * desc：用于视频裁剪的类
- */
+
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class VideoClipper {
+    private static final String TAG = "VideoClipper";
+
     final int TIMEOUT_USEC = 0;
     private String mInputVideoPath;
     private String mOutputVideoPath;
@@ -137,6 +137,7 @@ public class VideoClipper {
                 audioFormat = format;
                 continue;
             }
+            Log.e(TAG, "clipVideo: audioTrackIndex= " + audioTrackIndex + " videoTrackIndex = " + videoTrackIndex);
         }
         executorService.execute(videoCliper);
         executorService.execute(audioCliper);
@@ -220,11 +221,9 @@ public class VideoClipper {
                     if ((dur < duration) && readSampleData > 0) {
                         decoder.queueInputBuffer(inputIndex, 0, readSampleData, extractor.getSampleTime(), 0);
                         decodeinput++;
-                        System.out.println("videoCliper audio decodeinput"+decodeinput+" dataSize"+readSampleData+" sampeTime"+extractor.getSampleTime());
                         extractor.advance();
                     } else {
                         decoder.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-                        System.out.println("videoCliper audio decodeInput end");
                         inputDone = true;
                     }
                 }
@@ -261,19 +260,16 @@ public class VideoClipper {
                                 encoderInputBuffer.put(stereoBytes);
                                 encoder.queueInputBuffer(encodeInputIndex, 0, stereoBytes.length, info.presentationTimeUs, 0);
                                 encodeinput++;
-                                System.out.println("videoCliper audio encodeInput"+encodeinput+" dataSize"+info.size+" sampeTime"+info.presentationTimeUs);
                             }else{
                                 encoderInputBuffer.put(decoderOutputBuffer);
                                 encoder.queueInputBuffer(encodeInputIndex, info.offset, info.size, info.presentationTimeUs, 0);
                                 encodeinput++;
-                                System.out.println("videoCliper audio encodeInput"+encodeinput+" dataSize"+info.size+" sampeTime"+info.presentationTimeUs);
                             }
                         }
                     }
                     if(endOfStream){
                         int encodeInputIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC);
                         encoder.queueInputBuffer(encodeInputIndex, 0, 0, info.presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-                        System.out.println("videoCliper audio encodeInput end");
                         decodeDone = true;
                     }
                     decoder.releaseOutputBuffer(index, false);
@@ -501,7 +497,6 @@ public class VideoClipper {
         audioEncoder.release();
         released = true;
         after = System.currentTimeMillis();
-        System.out.println("cutVideo count1=" + (after - before));
         if (listener != null) {
             listener.onFinish();
         }
